@@ -26,25 +26,24 @@ def fx():
 
     # 3.构建损失函数
     with tf.variable_scope("loss_function"):
+        #loss = -tf.reduce_sum(y_data * tf.log(y_predict))
         loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_data, logits=y_predict))
     # 4.优化损失
     with tf.variable_scope("optimaizer_train"):
-        optimaizer = tf.train.GradientDescentOptimizer(learning_rate=0.1).minimize(loss)
+        optimaizer = tf.train.AdamOptimizer(0.01).minimize(loss)
 
     #5.计算准确率
     with tf.variable_scope("accuracy_train"):
         accuracy = getAccuracy(y_data,y_predict)
 
     # # #00_1 收集变量
-    # s1 = tf.summary.scalar("loss", loss)
-    # s2 = tf.summary.scalar("accuracy", accuracy)
-    # s3 = tf.summary.histogram("weigths", weigths)
-    # s4 = tf.summary.histogram("bais", bais)
+    s1 = tf.summary.scalar("loss", loss)
+    s2 = tf.summary.scalar("accuracy", accuracy)
     # # #00_2 合并变量
-    # merged = tf.summary.merge_all()
-    #
-    # # 创建saver对象
-    # saver = tf.train.Saver()
+    merged = tf.summary.merge_all()
+
+    # 创建saver对象
+    saver = tf.train.Saver()
 
     # 显示初始化全局变量
     init = tf.global_variables_initializer()
@@ -53,23 +52,24 @@ def fx():
         sess.run(init)
 
         # 00_3 创建事件文件
-        #filewriter = tf.summary.FileWriter("../tmp/summary", graph=sess.graph)
+        filewriter = tf.summary.FileWriter("../tmp/summary", graph=sess.graph)
 
         '''
            1.下面是训练+保存模型
         '''
 
-
-        x, y = mnist.train.next_batch(100)
-        mydict = {x_data: x, y_data: y}
-        for k in range(1000):
-            _, loss_value, accuracy_value = sess.run([optimaizer, loss, accuracy], feed_dict=mydict)
-            print("训练第%d次,当前损失值为%f" % (k, loss_value))
-            print("训练第%d次,准确率为%f" % (k,accuracy_value))
-        # 00_4 每次迭代都将此写入事件文件中
-        #filewriter.add_summary(merged_value, i)
-        # 保存模型 每隔100保存一次模型 防止中途断电了..
-        #saver.save(sess, "../tmp/model/myfull_model.ckpt")
+        for i in range(2000):
+            x, y = mnist.train.next_batch(500)
+            mydict = {x_data: x, y_data: y}
+            _, loss_value, accuracy_value, merged_value = sess.run([optimaizer, loss, accuracy, merged],
+                                                                   feed_dict=mydict)
+            if i % 200 == 0:
+                print("训练第%d次,当前损失值为%f" % (i+1, loss_value))
+                print("训练第%d次,准确率为%f" % (i+1,accuracy_value))
+                #00_4 每次迭代都将此写入事件文件中
+                filewriter.add_summary(merged_value, i)
+                #保存模型 每隔100保存一次模型 防止中途断电了..
+                saver.save(sess, "../tmp/model/mycnn_model.ckpt")
 
 
         '''
@@ -87,7 +87,7 @@ def fx():
         # # loss_value, accuracy_value = sess.run([loss,accuracy], feed_dict=mytestdict)
         # # print("未载入模型-损失值为%f" % loss_value)
         # # print("未载入模型-准确率为%f" % accuracy_value)
-        # path = "../tmp/model/myfull_model.ckpt"
+        # path = "../tmp/model/mycnn_model.ckpt"
         # saver.restore(sess, path)
         # loss_value, accuracy_value,mypredict = sess.run([loss, accuracy, y_predict], feed_dict=mytestdict)
         # print("载入模型后-损失值为%f" % loss_value)
